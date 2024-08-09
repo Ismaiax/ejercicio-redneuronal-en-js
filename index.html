@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redcita neuronal</title>
+	<meta name="robots" content="noindex">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@100..900&family=Roboto:ital,wght@0,400;0,500;0,700;0,900&display=swap" rel="stylesheet">
+    <style>
+        #sitio {
+            position: absolute;
+            top: 0%;
+            left: 40%;
+            width: 60%;
+            height: 45vh;
+            background-color: rgb(211,211,211);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #sitio p {
+            font-family: "Roboto Slab", serif;
+            font-size: 120px;
+        }
+        #container {
+            display: flex;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+        }
+        #formulario, #dataDisplay {
+            width: 25%;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            max-height: 45vh;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <input id="colorPicker" data-jscolor="{onInput:'update(this)', alpha:1.0}" value="rgb(211,211,211)">
+
+    <div id="sitio">
+        <p><b>MCK</b></p>
+        <pre id="out" style="position:absolute; bottom:5px; left:20px; font-size: 2em"></pre>
+    </div>
+
+    <div id="container">
+        <div id="formulario">
+            <h3>Entrenemos la red</h3>
+            <form id="trainForm">
+                <label for="r">R:</label>
+                <input type="number" id="r" name="r" min="0" max="1" step="0.01" required><br>
+                <label for="g">G:</label>
+                <input type="number" id="g" name="g" min="0" max="1" step="0.01" required><br>
+                <label for="b">B:</label>
+                <input type="number" id="b" name="b" min="0" max="1" step="0.01" required><br>
+				<hr>
+                <label for="light">Color de texto</label>
+				<input type="number" id="light" name="light" min="0" max="1" step="0.01" required><br>
+				<small>1 es para texto blanco, 0 para texto negro</small><br>
+                <button type="submit">Agregar</button> 
+            </form>
+			<button id="clearData">Limpiar Datos</button>
+            
+        </div>
+
+        <div id="dataDisplay">
+            <h3>Datos guardados</h3>
+            <pre id="dataContent"></pre>
+        </div>
+    </div>
+
+    <script src="jscolor.min.js"></script>
+    <script src="https://unpkg.com/brain.js"></script>
+
+    <script type="text/javascript">
+        var network = new brain.NeuralNetwork();
+        var trainingData = JSON.parse(localStorage.getItem('trainingData')) || [];
+
+        function trainNetwork() {
+            network.train(trainingData);
+        }
+
+        function addTrainingData(event) {
+            event.preventDefault();
+            var r = parseFloat(document.getElementById('r').value);
+            var g = parseFloat(document.getElementById('g').value);
+            var b = parseFloat(document.getElementById('b').value);
+            var light = parseFloat(document.getElementById('light').value);
+
+            trainingData.push({ input: { r: r, g: g, b: b }, output: { light: light } });
+            localStorage.setItem('trainingData', JSON.stringify(trainingData));
+            updateDataDisplay();
+            trainNetwork();
+            location.reload(); // Recargar la página para cargar todos los datos nuevamente
+        }
+
+        function clearTrainingData() {
+            trainingData = [];
+            localStorage.setItem('trainingData', JSON.stringify(trainingData));
+            updateDataDisplay();
+            trainNetwork();
+			location.reload();
+        }
+
+        function updateDataDisplay() {
+            document.getElementById('dataContent').textContent = JSON.stringify(trainingData, null, 2);
+        }
+
+        document.getElementById('trainForm').addEventListener('submit', addTrainingData);
+        document.getElementById('clearData').addEventListener('click', clearTrainingData);
+
+        updateDataDisplay();
+        trainNetwork();
+
+        function update(picker) {
+            document.getElementById('out').innerHTML = [
+                'R = (' + (picker.channel('R')).toFixed(0)  + ') - ' + (picker.channel('R') / 255).toFixed(2),
+                'G = (' + (picker.channel('G')).toFixed(0)  + ') - ' + (picker.channel('G') / 255).toFixed(2),
+                'B = (' + (picker.channel('B')).toFixed(0)  + ') - ' + (picker.channel('B') / 255).toFixed(2)
+            ].join('\n');
+
+            document.getElementById('sitio').style.background = picker.toBackground();
+
+            var entrada = {
+                r: picker.channel('R') / 255,
+                g: picker.channel('G') / 255,
+                b: picker.channel('B') / 255
+            };
+            var resultado = network.run(entrada);
+
+            console.log(resultado);
+
+            resultado.light > 0.5 ? document.getElementById('sitio').style.color = "white" : document.getElementById('sitio').style.color = "black";
+        }
+    </script>
+</body>
+</html>
